@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Thought Profiler</string>
+    <string name="db_name">HumanProfiler</string>
+    <string name="skip">I cannot be bothered right now</string>
+    <string name="action_settings">Edit Categories</string>
+    <string name="add_category_button">Something different...</string>
+    <string name="new_category">New thoughts!</string>
+    <string name="do_not_disturb_category">Do Not Disturb</string>
+    <string name="you_will_be_polled">You will be polled when you least expect it.</string>
+    <string name="stop_notifications_hint">To stop polling completely, disable it in the application settings.</string>
+</resources>
