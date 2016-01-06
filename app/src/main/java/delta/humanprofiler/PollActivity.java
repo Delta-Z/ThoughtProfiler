@@ -1,13 +1,17 @@
 package delta.humanprofiler;
 
+import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
 public class PollActivity extends AppCompatActivity {
     private static boolean changeLast = false;
+
+    static synchronized void setChangeLast() {
+        changeLast = true;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -16,8 +20,10 @@ public class PollActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_poll);
         ActionBar actionBar = getSupportActionBar();
-        actionBar.setTitle("What were you thinking about?");
-        actionBar.setIcon(R.drawable.ic_notification);
+        if (actionBar != null) {
+            actionBar.setTitle("What were you thinking about?");
+            actionBar.setIcon(R.mipmap.ic_launcher);
+        }
     }
 
     @Override
@@ -34,10 +40,6 @@ public class PollActivity extends AppCompatActivity {
                 }
             }
         }, true);
-    }
-
-    static synchronized void setChangeLast() {
-        changeLast = true;
     }
 
     void answer(String category) {

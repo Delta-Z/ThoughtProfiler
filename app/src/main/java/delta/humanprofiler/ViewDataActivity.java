@@ -25,8 +25,10 @@ public class ViewDataActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_data);
         ActionBar actionBar = getSupportActionBar();
-        actionBar.setTitle("Sampled Thought Distribution");
-        actionBar.setIcon(R.drawable.ic_notification);
+        if (actionBar != null) {
+            actionBar.setTitle("Sampled Thought Distribution");
+            actionBar.setIcon(R.mipmap.ic_launcher);
+        }
 
         Map<String, Integer> categories =
                 SamplesDBHelper.getInstance(getApplicationContext()).getCategoriesDistribution();

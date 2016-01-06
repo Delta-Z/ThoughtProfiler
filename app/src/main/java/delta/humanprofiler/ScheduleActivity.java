@@ -22,19 +22,6 @@ import java.util.Date;
 
 public class ScheduleActivity extends AppCompatActivity {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_schedule);
-        ActionBar actionBar = getSupportActionBar();
-        actionBar.setTitle("Polling Disabled Times");
-        actionBar.setIcon(R.drawable.ic_notification);
-        ListView listView = (ListView) findViewById(R.id.schedule_list_view);
-        listView.setAdapter(new IntervalsAdapter(this));
-        // Add interval handler
-        // ********************
-    }
-
     private static long parseTimeString(String string) throws ParseException {
         Date date = DateFormat.getTimeInstance(DateFormat.SHORT).parse(string);
         return date.getTime();
@@ -47,6 +34,21 @@ public class ScheduleActivity extends AppCompatActivity {
         return DateFormat.getTimeInstance(DateFormat.SHORT).format(date);
     }
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_schedule);
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.setTitle("Polling Disabled Times");
+            actionBar.setIcon(R.mipmap.ic_launcher);
+        }
+        ListView listView = (ListView) findViewById(R.id.schedule_list_view);
+        listView.setAdapter(new IntervalsAdapter(this));
+        // Add interval handler
+        // ********************
+    }
+
     private class IntervalsAdapter extends ResourceCursorAdapter {
         private final Activity mActivity;
 
@@ -55,6 +57,38 @@ public class ScheduleActivity extends AppCompatActivity {
                     ScheduleDBHelper.getInstance(activity).getIntervalsCursor().cursor(),
                     FLAG_REGISTER_CONTENT_OBSERVER);
             mActivity = activity;
+        }
+
+        @Override
+        public void bindView(View view, Context context, Cursor cursor) {
+            Button fromBtn = (Button) view.findViewById(R.id.schedule_blackout_from_btn);
+            Button toBtn = (Button) view.findViewById(R.id.schedule_blackout_to_btn);
+            Button removeBtn = (Button) view.findViewById(R.id.schedule_blackout_remove_btn);
+            ScheduleDBHelper.IntervalsCursor intervals =
+                    new ScheduleDBHelper.IntervalsCursor(cursor);
+            if (intervals.cursor().getColumnCount() < 3) {
+                Log.e(getClass().getCanonicalName(),
+                        "Unexpected number of columns: " + intervals.cursor().getColumnCount());
+                fromBtn.setEnabled(false);
+                toBtn.setEnabled(false);
+                removeBtn.setEnabled(false);
+                return;
+            }
+            final long id = intervals.id();
+            final long startTime = intervals.startTime();
+            final long endTime = intervals.endTime();
+            fromBtn.setText(makeTimeString(startTime));
+            fromBtn.setOnClickListener(new UpdateClickListener(mActivity, id, startTime, true));
+            toBtn.setText(makeTimeString(endTime));
+            toBtn.setOnClickListener(new UpdateClickListener(mActivity, id, endTime, false));
+            removeBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (ScheduleDBHelper.getInstance(mActivity).deleteInterval(id)) {
+                        IntervalsAdapter.this.notifyDataSetChanged();
+                    }
+                }
+            });
         }
 
         private class UpdateClickListener implements View.OnClickListener {
@@ -88,38 +122,6 @@ public class ScheduleActivity extends AppCompatActivity {
                 }, hourAndMinute.getLeft(), hourAndMinute.getRight(), true);
                 timePickerDialog.show();
             }
-        }
-
-        @Override
-        public void bindView(View view, Context context, Cursor cursor) {
-            Button fromBtn = (Button) view.findViewById(R.id.schedule_blackout_from_btn);
-            Button toBtn = (Button) view.findViewById(R.id.schedule_blackout_to_btn);
-            Button removeBtn = (Button) view.findViewById(R.id.schedule_blackout_remove_btn);
-            ScheduleDBHelper.IntervalsCursor intervals =
-                    new ScheduleDBHelper.IntervalsCursor(cursor);
-            if (intervals.cursor().getColumnCount() < 3) {
-                Log.e(getClass().getCanonicalName(),
-                        "Unexpected number of columns: " + intervals.cursor().getColumnCount());
-                fromBtn.setEnabled(false);
-                toBtn.setEnabled(false);
-                removeBtn.setEnabled(false);
-                return;
-            }
-            final long id = intervals.id();
-            final long startTime = intervals.startTime();
-            final long endTime = intervals.endTime();
-            fromBtn.setText(makeTimeString(startTime));
-            fromBtn.setOnClickListener(new UpdateClickListener(mActivity, id, startTime, true));
-            toBtn.setText(makeTimeString(endTime));
-            toBtn.setOnClickListener(new UpdateClickListener(mActivity, id, endTime, false));
-            removeBtn.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (ScheduleDBHelper.getInstance(mActivity).deleteInterval(id)) {
-                        IntervalsAdapter.this.notifyDataSetChanged();
-                    }
-                }
-            });
         }
     }
 }

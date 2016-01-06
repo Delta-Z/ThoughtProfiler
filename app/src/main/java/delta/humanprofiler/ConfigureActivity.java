@@ -32,13 +32,23 @@ public class ConfigureActivity extends AppCompatActivity {
         BOOLEAN_DEFAULTS = map;
     }
 
+    static private SharedPreferences getPreferences(Context context) {
+        return context.getSharedPreferences(context.getString(R.string.app_name), MODE_PRIVATE);
+    }
+
+    static boolean getBooleanSetting(Context context, String setting) {
+        return getPreferences(context).getBoolean(setting, BOOLEAN_DEFAULTS.get(setting));
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_configure);
         ActionBar actionBar = getSupportActionBar();
-        actionBar.setTitle("Configure " + getString(R.string.app_name));
-        actionBar.setIcon(R.drawable.ic_notification);
+        if (actionBar != null) {
+            actionBar.setTitle("Configure " + getString(R.string.app_name));
+            actionBar.setIcon(R.mipmap.ic_launcher);
+        }
         boolean polling_enabled = getBooleanSetting(getApplicationContext(), POLLING_ENABLED);
         if (polling_enabled ^ NotificationPublisher.isActive()) {
             if (polling_enabled) {
@@ -79,14 +89,6 @@ public class ConfigureActivity extends AppCompatActivity {
             }
         });
         refreshNumSamples();
-    }
-
-    static private SharedPreferences getPreferences(Context context) {
-        return context.getSharedPreferences(context.getString(R.string.app_name), MODE_PRIVATE);
-    }
-
-    static boolean getBooleanSetting(Context context, String setting) {
-        return getPreferences(context).getBoolean(setting, BOOLEAN_DEFAULTS.get(setting));
     }
 
     private void initBooleanSettingToggle(int buttonId, final String setting) {

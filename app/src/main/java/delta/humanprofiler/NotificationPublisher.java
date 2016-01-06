@@ -14,20 +14,14 @@ import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
-/**
- * Created by Delta on 04/12/2015.
- */
 public class NotificationPublisher extends BroadcastReceiver {
-
-    public static String COMMAND = "delta.humanprofiler.cmd";
 
     static final int SCHEDULE = 1;
     static final int NOTIFY = 2;
     static final int DELETE = 3;
     static final int DND = 5;
-
     static final int NOTIFICATION_TIMEOUT = 60;  // seconds
-
+    public static String COMMAND = "delta.humanprofiler.cmd";
     // Whether polling is currently active (or paused through configuration activity).
     static private boolean active = false;
     // Whether polling activity is currently active.
@@ -64,7 +58,7 @@ public class NotificationPublisher extends BroadcastReceiver {
                 .setContentText("Human profiler needs to know!")
                 .setSmallIcon(R.drawable.ic_question)
                 .setLargeIcon(BitmapFactory.decodeResource(context.getResources(),
-                        R.drawable.ic_notification))
+                        R.mipmap.ic_launcher))
                 .setPriority(ConfigureActivity.getBooleanSetting(context, ConfigureActivity.NOTIFICATION_PRIORITY_HIGH) ? Notification.PRIORITY_MAX : Notification.PRIORITY_DEFAULT)
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setAutoCancel(false);
@@ -87,6 +81,21 @@ public class NotificationPublisher extends BroadcastReceiver {
         Intent intent = new Intent(context, NotificationPublisher.class);
         intent.putExtra(NotificationPublisher.COMMAND, command);
         return intent;
+    }
+
+    static public synchronized void pauseNotifications(Activity activity, boolean justForPoll) {
+        if (justForPoll) {
+            polling = true;
+        } else {
+            active = false;
+        }
+        if (!((activity instanceof PollActivity) || (activity instanceof ConfigureActivity))) {
+            Log.e(NotificationPublisher.class.getCanonicalName(),
+                    "unexpected pauseNotifications from " + activity.getClass().getCanonicalName());
+        }
+        NotificationManager notificationManager =
+                (NotificationManager) activity.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(NOTIFY);
     }
 
     private void scheduleIntent(Context context, Intent intent, long timestamp, boolean wakeup) {
@@ -135,20 +144,5 @@ public class NotificationPublisher extends BroadcastReceiver {
                     Log.e(getClass().getCanonicalName(), "wrong command id " + command);
             }
         }
-    }
-
-    static public synchronized void pauseNotifications(Activity activity, boolean justForPoll) {
-        if (justForPoll) {
-            polling = true;
-        } else {
-            active = false;
-        }
-        if (!((activity instanceof PollActivity) || (activity instanceof ConfigureActivity))) {
-            Log.e(NotificationPublisher.class.getCanonicalName(),
-                    "unexpected pauseNotifications from " + activity.getClass().getCanonicalName());
-        }
-        NotificationManager notificationManager =
-                (NotificationManager)activity.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(NOTIFY);
     }
 }
