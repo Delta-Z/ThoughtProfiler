@@ -1,14 +1,6 @@
 apply plugin: 'com.android.application'
 
 android {
-    signingConfigs {
-        config {
-            keyAlias 'android package sign'
-            storeFile file('D:/AndroidStudioProjects/signing_key.jks')
-            storePassword 'diamonds'
-            keyPassword 'diamonds'
-        }
-    }
     compileSdkVersion 'Google Inc.:Google APIs:23'
     buildToolsVersion "23.0.2"
     defaultConfig {
