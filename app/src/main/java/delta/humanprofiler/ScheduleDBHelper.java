@@ -7,8 +7,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.Range;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -31,6 +31,10 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
     private static ScheduleDBHelper mInstance = null;
     private List<Pair<Long, Range<Long>>> mIntervals = null;
 
+    private ScheduleDBHelper(Context context) {
+        super(context, context.getString(R.string.db_name) + "." + SCHEDULE_TABLE_NAME, null, DATABASE_VERSION);
+    }
+
     public static synchronized ScheduleDBHelper getInstance(Context context){
         if(mInstance == null)
         {
@@ -39,8 +43,65 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         return mInstance;
     }
 
-    private ScheduleDBHelper(Context context) {
-        super(context, context.getString(R.string.db_name) + "." + SCHEDULE_TABLE_NAME, null, DATABASE_VERSION);
+    static long timeFromHourAndMinute(int hourOfDay, int minute) {
+        Calendar calendar = new GregorianCalendar();
+        calendar.clear();
+        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+        calendar.set(Calendar.MINUTE, minute);
+        return calendar.getTimeInMillis();
+    }
+
+    static Pair<Integer, Integer> hourAndMinuteFromTime(long time) {
+        Calendar calendar = new GregorianCalendar();
+        calendar.clear();
+        calendar.setTimeInMillis(time);
+        return Pair.of(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
+    }
+
+    private static int addIntervalToList(List<Pair<Long, Range<Long>>> list,
+                                         long id, long begin, long end) {
+        if (begin < end) {
+            list.add(Pair.of(id, Range.between(begin, end)));
+            return 1;
+        } else if (begin > end) {
+            // Split into 2 well ordered intervals.
+            list.add(Pair.of(id,
+                    Range.between(begin, timeFromHourAndMinute(24, 0))));
+            list.add(0, Pair.of(id,
+                    Range.between(timeFromHourAndMinute(0, 0), end)));
+            return 2;
+        } else {
+            Log.e(ScheduleDBHelper.class.getCanonicalName(),
+                    "Interval " + id + " is made of a single point " + begin);
+        }
+        return 0;
+    }
+
+    private static boolean areIntersecting(List<Pair<Long, Range<Long>>> sortedIntervals) {
+        Range<Long> prevRange = null;
+        for (Pair<Long, Range<Long>> interval : sortedIntervals) {
+            if (prevRange != null && prevRange.isOverlappedBy(interval.getValue())) {
+                Log.v(ScheduleDBHelper.class.getCanonicalName(),
+                        "Overlapping interval " + interval.toString());
+                return true;
+            }
+            prevRange = interval.getValue();
+        }
+        return false;
+    }
+
+    private static void sortIntervals(List<Pair<Long, Range<Long>>> intervals) {
+        Collections.sort(intervals, new Comparator<Pair<Long, Range<Long>>>() {
+            @Override
+            public int compare(Pair<Long, Range<Long>> lhs, Pair<Long, Range<Long>> rhs) {
+                int intervalCompare = Long.compare(
+                        lhs.getValue().getMinimum(), rhs.getValue().getMinimum());
+                if (intervalCompare == 0) {
+                    return Long.compare(lhs.getKey(), rhs.getKey());
+                }
+                return intervalCompare;
+            }
+        });
     }
 
     @Override
@@ -59,45 +120,6 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
     }
 
-    static long timeFromHourAndMinute(int hourOfDay, int minute) {
-        Calendar calendar = new GregorianCalendar();
-        calendar.clear();
-        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-        calendar.set(Calendar.MINUTE, minute);
-        return calendar.getTimeInMillis();
-    }
-
-    static Pair<Integer, Integer> hourAndMinuteFromTime(long time) {
-        Calendar calendar = new GregorianCalendar();
-        calendar.clear();
-        calendar.setTimeInMillis(time);
-        return Pair.of(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
-    }
-
-    static class IntervalsCursor {
-        IntervalsCursor(Cursor cursor) {
-            mCursor = cursor;
-        }
-
-        public Cursor cursor() {
-            return mCursor;
-        }
-
-        public Long id() {
-            return mCursor.getLong(mCursor.getColumnIndex(KEY_ID));
-        }
-
-        public Long startTime() {
-            return mCursor.getLong(mCursor.getColumnIndex(KEY_START));
-        }
-
-        public Long endTime() {
-            return mCursor.getLong(mCursor.getColumnIndex(KEY_END));
-        }
-
-        private Cursor mCursor;
-    }
-
     IntervalsCursor getIntervalsCursor() {
         IntervalsCursor cursor = new IntervalsCursor(getReadableDatabase().query(
                 SCHEDULE_TABLE_NAME, new String[]{KEY_ID, KEY_START, KEY_END}, null, null, null,
@@ -113,25 +135,6 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
             }
         }
         return cursor;
-    }
-
-    private static int addIntervalToList(List<Pair<Long, Range<Long>>> list,
-                                   long id, long begin, long end) {
-        if (begin < end) {
-            list.add(Pair.of(id, Range.between(begin, end)));
-            return 1;
-        } else if (begin > end) {
-            // Split into 2 well ordered intervals.
-            list.add(Pair.of(id,
-                    Range.between(begin, timeFromHourAndMinute(24, 0))));
-            list.add(0, Pair.of(id,
-                    Range.between(timeFromHourAndMinute(0, 0), end)));
-            return 2;
-        } else {
-            Log.e(ScheduleDBHelper.class.getCanonicalName(),
-                    "Interval " + id + " is made of a single point " + begin);
-        }
-        return 0;
     }
 
     private synchronized List<Pair<Long, Range<Long>>> getSortedIntervals() {
@@ -172,19 +175,6 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         return getSortedIntervals();
     }
 
-    private static boolean areIntersecting(List<Pair<Long, Range<Long>>> sortedIntervals) {
-        Range<Long> prevRange = null;
-        for (Pair<Long, Range<Long>> interval : sortedIntervals) {
-            if (prevRange != null && prevRange.isOverlappedBy(interval.getValue())) {
-                Log.v(ScheduleDBHelper.class.getCanonicalName(),
-                        "Overlapping interval " + interval.toString());
-                return true;
-            }
-            prevRange = interval.getValue();
-        }
-        return false;
-    }
-
     boolean deleteInterval(long id) {
         boolean found = false;
         if (mIntervals != null) {
@@ -213,20 +203,6 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         }
         db.close();
         return found;
-    }
-
-    private static void sortIntervals(List<Pair<Long, Range<Long>>> intervals) {
-        Collections.sort(intervals, new Comparator<Pair<Long, Range<Long>>>() {
-            @Override
-            public int compare(Pair<Long, Range<Long>> lhs, Pair<Long, Range<Long>> rhs) {
-                int intervalCompare = Long.compare(
-                        lhs.getValue().getMinimum(), rhs.getValue().getMinimum());
-                if (intervalCompare == 0) {
-                    return Long.compare(lhs.getKey(), rhs.getKey());
-                }
-                return intervalCompare;
-            }
-        });
     }
 
     synchronized boolean updateInterval(long id, long newValue, boolean startTime) {
@@ -287,7 +263,30 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         return true;
     }
 
-    synchronized boolean addInterval(long id, long newValue, boolean startTime) {
-        return true;
+    synchronized long addInterval() {
+    }
+
+    static class IntervalsCursor {
+        private Cursor mCursor;
+
+        IntervalsCursor(Cursor cursor) {
+            mCursor = cursor;
+        }
+
+        public Cursor cursor() {
+            return mCursor;
+        }
+
+        public Long id() {
+            return mCursor.getLong(mCursor.getColumnIndex(KEY_ID));
+        }
+
+        public Long startTime() {
+            return mCursor.getLong(mCursor.getColumnIndex(KEY_START));
+        }
+
+        public Long endTime() {
+            return mCursor.getLong(mCursor.getColumnIndex(KEY_END));
+        }
     }
 }

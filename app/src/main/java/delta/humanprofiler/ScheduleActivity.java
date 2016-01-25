@@ -22,6 +22,8 @@ import java.util.Date;
 
 public class ScheduleActivity extends AppCompatActivity {
 
+    private IntervalsAdapter mAdapter;
+
     private static long parseTimeString(String string) throws ParseException {
         Date date = DateFormat.getTimeInstance(DateFormat.SHORT).parse(string);
         return date.getTime();
@@ -40,23 +42,36 @@ public class ScheduleActivity extends AppCompatActivity {
         setContentView(R.layout.activity_schedule);
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
-            actionBar.setTitle("Polling Disabled Times");
+            actionBar.setTitle(getString(R.string.polling_disabled_activity_title));
             actionBar.setIcon(R.mipmap.ic_launcher);
         }
+        mAdapter = new IntervalsAdapter(this);
         ListView listView = (ListView) findViewById(R.id.schedule_list_view);
-        listView.setAdapter(new IntervalsAdapter(this));
+        listView.setAdapter(mAdapter);
         // Add interval handler
         // ********************
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mAdapter.resetCursor();
+    }
+
+    public void addInterval(View v) {
+        long id = ScheduleDBHelper.getInstance(this).addInterval();
+        new ScheduleTimePickerDialog(mAdapter, id, 0, true).show();
+        new ScheduleTimePickerDialog(mAdapter, id, 0, false).show();
+        mAdapter.resetCursor();
+    }
+
     private class IntervalsAdapter extends ResourceCursorAdapter {
-        private final Activity mActivity;
+        private final Context mContext;
 
         IntervalsAdapter(Activity activity) {
             super(activity, R.layout.schedule_blackout,
-                    ScheduleDBHelper.getInstance(activity).getIntervalsCursor().cursor(),
-                    FLAG_REGISTER_CONTENT_OBSERVER);
-            mActivity = activity;
+                    ScheduleDBHelper.getInstance(activity).getIntervalsCursor().cursor(), 0);
+            mContext = activity.getApplicationContext();
         }
 
         @Override
@@ -78,50 +93,62 @@ public class ScheduleActivity extends AppCompatActivity {
             final long startTime = intervals.startTime();
             final long endTime = intervals.endTime();
             fromBtn.setText(makeTimeString(startTime));
-            fromBtn.setOnClickListener(new UpdateClickListener(mActivity, id, startTime, true));
+            fromBtn.setOnClickListener(
+                    new ScheduleTimePickerDialog(this, id, startTime, true));
             toBtn.setText(makeTimeString(endTime));
-            toBtn.setOnClickListener(new UpdateClickListener(mActivity, id, endTime, false));
+            toBtn.setOnClickListener(
+                    new ScheduleTimePickerDialog(this, id, endTime, false));
             removeBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (ScheduleDBHelper.getInstance(mActivity).deleteInterval(id)) {
-                        IntervalsAdapter.this.notifyDataSetChanged();
+                    if (ScheduleDBHelper.getInstance(ScheduleActivity.this).deleteInterval(id)) {
+                        resetCursor();
                     }
                 }
             });
         }
 
-        private class UpdateClickListener implements View.OnClickListener {
-            private final Activity mActivity;
-            private final long mId;
-            private final long mInitialValue;
-            private final boolean mStartTime;
+        public void resetCursor() {
+            changeCursor(ScheduleDBHelper.getInstance(mContext).getIntervalsCursor().cursor());
+            notifyDataSetChanged();
+        }
+    }
 
-            UpdateClickListener(Activity activity, long id, long initialValue, boolean startTime) {
-                mActivity = activity;
-                mId = id;
-                mInitialValue = initialValue;
-                mStartTime = startTime;
-            }
+    private class ScheduleTimePickerDialog implements View.OnClickListener {
+        private final long mId;
+        private final long mInitialValue;
+        private final boolean mStartTime;
+        private final IntervalsAdapter mAdapter;
 
-            @Override
-            public void onClick(View v) {
-                Pair<Integer, Integer> hourAndMinute =
-                        ScheduleDBHelper.hourAndMinuteFromTime(mInitialValue);
-                TimePickerDialog timePickerDialog = new TimePickerDialog(mActivity,
-                        new TimePickerDialog.OnTimeSetListener() {
-                            @Override
-                            public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
-                                if (ScheduleDBHelper.getInstance(mActivity).updateInterval(
-                                        mId,
-                                        ScheduleDBHelper.timeFromHourAndMinute(hourOfDay, minute),
-                                        mStartTime)) {
-                                    IntervalsAdapter.this.notifyDataSetInvalidated();
-                                }
+        ScheduleTimePickerDialog(
+                IntervalsAdapter adapter, long id, long initialValue, boolean startTime) {
+            mId = id;
+            mInitialValue = initialValue;
+            mStartTime = startTime;
+            mAdapter = adapter;
+        }
+
+        public void show() {
+            Pair<Integer, Integer> hourAndMinute =
+                    ScheduleDBHelper.hourAndMinuteFromTime(mInitialValue);
+            TimePickerDialog timePickerDialog = new TimePickerDialog(ScheduleActivity.this,
+                    new TimePickerDialog.OnTimeSetListener() {
+                        @Override
+                        public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                            if (ScheduleDBHelper.getInstance(ScheduleActivity.this).updateInterval(
+                                    mId,
+                                    ScheduleDBHelper.timeFromHourAndMinute(hourOfDay, minute),
+                                    mStartTime)) {
+                                mAdapter.resetCursor();
                             }
-                }, hourAndMinute.getLeft(), hourAndMinute.getRight(), true);
-                timePickerDialog.show();
-            }
+                        }
+                    }, hourAndMinute.getLeft(), hourAndMinute.getRight(), true);
+            timePickerDialog.show();
+        }
+
+        @Override
+        public void onClick(View v) {
+            show();
         }
     }
 }
