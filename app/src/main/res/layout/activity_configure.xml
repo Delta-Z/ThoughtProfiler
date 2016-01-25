@@ -1,120 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ConfigureActivity"
-    android:orientation="vertical"
-    android:gravity="top">
+    tools:context=".ConfigureActivity">
 
     <TextView
-        android:padding="@dimen/activity_vertical_margin"
+        android:id="@+id/numSamples"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_alignParentBottom="true"
+        android:padding="@dimen/activity_vertical_margin"
         android:text="0 samples"
-        android:id="@+id/numSamples"
         android:textAlignment="center"
-        android:layout_alignParentBottom="true" />
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:layout_above="@id/numSamples">
 
         <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
             android:paddingLeft="@dimen/activity_horizontal_margin"
             android:paddingRight="@dimen/activity_horizontal_margin"
-            android:paddingTop="@dimen/activity_vertical_margin"
-            android:orientation="vertical"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:paddingTop="@dimen/activity_vertical_margin">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:layout_marginBottom="@dimen/activity_vertical_margin"
                 android:text="Polling"
-                android:layout_marginBottom="@dimen/activity_vertical_margin"
-                android:textAlignment="center" />
+                android:textAlignment="center"
+                android:textAppearance="?android:attr/textAppearanceLarge" />
 
             <ToggleButton
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textOn="Polling Active"
-                android:textOff="Polling Suspended"
                 android:id="@+id/configure_polling_active_btn"
-                android:layout_gravity="center_horizontal"
-                android:checked="false"/>
-
-            <ToggleButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textOn="High Priority Notifications"
-                android:textOff="Normal Priority Notifications"
+                android:layout_gravity="center_horizontal"
+                android:checked="false"
+                android:textOff="Polling Suspended"
+                android:textOn="Polling Active" />
+
+            <ToggleButton
                 android:id="@+id/configure_notification_priority_btn"
-                android:layout_gravity="center_horizontal"
-                android:checked="true" />
-
-            <ToggleButton
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textOn="Missed Polls As Do Not Disturb"
-                android:textOff="Ignoring Missed Polls"
-                android:id="@+id/configure_missed_as_dnd_btn"
                 android:layout_gravity="center_horizontal"
-                android:checked="false" />
+                android:checked="true"
+                android:textOff="Normal Priority Notifications"
+                android:textOn="High Priority Notifications" />
+
+            <ToggleButton
+                android:id="@+id/configure_missed_as_dnd_btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:checked="false"
+                android:textOff="Ignoring Missed Polls"
+                android:textOn="Missed Polls As Do Not Disturb" />
 
             <Button
+                android:id="@+id/schedule"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Configure Polling Hours"
-                android:id="@+id/schedule"
+                android:layout_gravity="center_horizontal"
                 android:onClick="changeSchedule"
-                android:layout_gravity="center_horizontal" />
+                android:text="Configure Polling Hours" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceLarge"
-                android:text="Data"
-                android:layout_marginTop="@dimen/activity_vertical_margin"
                 android:layout_marginBottom="@dimen/activity_vertical_margin"
-                android:textAlignment="center" />
+                android:layout_marginTop="@dimen/activity_vertical_margin"
+                android:text="Data"
+                android:textAlignment="center"
+                android:textAppearance="?android:attr/textAppearanceLarge" />
 
             <Button
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="View Data"
                 android:id="@+id/view_data"
-                android:onClick="viewData"
-                android:layout_gravity="center_horizontal" />
-
-            <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Edit Categories"
-                android:id="@+id/categories"
                 android:layout_gravity="center_horizontal"
-                android:onClick="editCategories" />
+                android:onClick="viewData"
+                android:text="View Data" />
 
             <Button
+                android:id="@+id/categories"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Change Last Answer"
+                android:layout_gravity="center_horizontal"
+                android:onClick="editCategories"
+                android:text="Edit Categories" />
+
+            <Button
                 android:id="@+id/change_last"
-                android:onClick="changeLast"
-                android:enabled="false"
-                android:layout_gravity="center_horizontal" />
-
-            <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Clear All Collected Data"
+                android:layout_gravity="center_horizontal"
+                android:enabled="false"
+                android:onClick="changeLast"
+                android:text="Change Last Answer" />
+
+            <Button
                 android:id="@+id/clear_data"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
                 android:onClick="clearData"
-                android:layout_gravity="center_horizontal" />
+                android:text="Clear All Collected Data" />
         </LinearLayout>
     </ScrollView>
 
-</LinearLayout>
+</RelativeLayout>
