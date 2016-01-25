@@ -8,4 +8,6 @@
     <string name="do_not_disturb_category">Do Not Disturb</string>
     <string name="you_will_be_polled">You will be polled when you least expect it.</string>
     <string name="stop_notifications_hint">To stop polling completely, disable it in the application settings.</string>
+    <string name="polling_disabled_activity_title">Times When Polling Is Disabled</string>
+    <string name="new_interval">New Interval</string>
 </resources>

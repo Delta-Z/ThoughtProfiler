@@ -1,39 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="horizontal"
     android:layout_width="match_parent"
-    tools:context="delta.humanprofiler.ScheduleActivity"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    tools:context="delta.humanprofiler.ScheduleActivity">
 
     <Button
+        android:id="@+id/schedule_blackout_from_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="00:00"
-        android:id="@+id/schedule_blackout_from_btn" />
+        android:text="00:00" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="to" />
+        android:text="to"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <Button
+        android:id="@+id/schedule_blackout_to_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="00:00"
-        android:id="@+id/schedule_blackout_to_btn" />
+        android:text="00:00" />
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
         <Button
+            android:id="@+id/schedule_blackout_remove_btn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Remove"
-            android:id="@+id/schedule_blackout_remove_btn"
-            android:layout_gravity="top|right" />
+            android:layout_gravity="top|right"
+            android:text="Remove" />
     </FrameLayout>
 
 </LinearLayout>
