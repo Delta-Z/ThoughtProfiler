@@ -14,6 +14,7 @@ import android.widget.ListView;
 import android.widget.ResourceCursorAdapter;
 import android.widget.TimePicker;
 
+import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -50,8 +51,8 @@ public class ScheduleActivity extends AppCompatActivity {
         mAdapter = new IntervalsAdapter(this);
         ListView listView = (ListView) findViewById(R.id.schedule_list_view);
         listView.setAdapter(mAdapter);
-        // Add interval handler
-        // ********************
+        // Add interval handler?
+        // *********************
     }
 
     @Override
@@ -61,17 +62,19 @@ public class ScheduleActivity extends AppCompatActivity {
     }
 
     public void addInterval(View view) {
-        ScheduleTimePicker picker = new ScheduleTimePicker(true, 0, true, 0, null);
+        ScheduleTimePicker picker = new ScheduleTimePicker(mAdapter, true, 0, true, 0, null);
         picker.run();
     }
 
     private class ScheduleTimePicker implements TimePickerDialog.OnTimeSetListener {
         private final Long mIntervalToDelete;
+        private final IntervalsAdapter mAdapter;
         private boolean mAskForStart, mAskForEnd;
         private long mStart, mEnd;
 
-        public ScheduleTimePicker(boolean askForStart, long start, boolean askForEnd, long end,
-                                  Long intervalToDelete) {
+        public ScheduleTimePicker(IntervalsAdapter adapter, boolean askForStart, long start,
+                                  boolean askForEnd, long end, Long intervalToDelete) {
+            mAdapter = adapter;
             mAskForStart = askForStart;
             mAskForEnd = askForEnd;
             mStart = start;
@@ -81,12 +84,26 @@ public class ScheduleActivity extends AppCompatActivity {
 
         public void run() {
             if (!ShowTimePickerIfNecessary()) {
+                if (mStart == mEnd) {
+                    return;
+                }
                 ScheduleDBHelper dbHelper = ScheduleDBHelper.getInstance(ScheduleActivity.this);
                 if (mIntervalToDelete != null && !dbHelper.deleteInterval(mIntervalToDelete)) {
                     return;
                 }
-                // ********* support SPLIT **************
-                dbHelper.addInterval(Range.closedOpen(mStart, mEnd));
+                if (mStart < mEnd) {
+                    dbHelper.addIntervals(ImmutableRangeSet.of(Range.closedOpen(mStart, mEnd)));
+                } else {
+                    ImmutableRangeSet.Builder<Long> intervalBuilder =
+                            new ImmutableRangeSet.Builder<Long>()
+                                    .add(Range.closedOpen(
+                                            mStart,
+                                            ScheduleDBHelper.timestampFromHourAndMinute(24, 0)))
+                                    .add(Range.closedOpen(
+                                            ScheduleDBHelper.timestampFromHourAndMinute(0, 0),
+                                            mEnd));
+                    dbHelper.addIntervals(intervalBuilder.build());
+                }
                 mAdapter.resetCursor();
             }
         }
@@ -153,6 +170,7 @@ public class ScheduleActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     ScheduleTimePicker picker = new ScheduleTimePicker(
+                            mAdapter,
                             v.getId() == R.id.schedule_blackout_from_btn, startTime,
                             v.getId() == R.id.schedule_blackout_to_btn, endTime, id);
                     picker.run();

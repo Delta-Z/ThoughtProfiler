@@ -93,13 +93,11 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         return true;
     }
 
-    synchronized boolean addInterval(Range<Long> interval) {
-        RangeSet<Long> data = TreeRangeSet.create();
-        data.add(interval);
-
+    synchronized boolean addIntervals(RangeSet<Long> intervals) {
+        RangeSet<Long> allIntervals = TreeRangeSet.create(intervals);
         IntervalsCursor cursor = getIntervalsCursor();
         while (cursor.isValid()) {
-            data.add(cursor.range());
+            allIntervals.add(cursor.range());
             cursor.advance();
         }
         cursor.cursor().close();
@@ -107,7 +105,7 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(SCHEDULE_TABLE_NAME, null, null);
         ContentValues row = new ContentValues();
-        for (Range<Long> r : data.asRanges()) {
+        for (Range<Long> r : allIntervals.asRanges()) {
             row.put(KEY_START, r.lowerEndpoint());
             row.put(KEY_END, r.upperEndpoint());
             long rowId = db.insert(SCHEDULE_TABLE_NAME, null, row);
