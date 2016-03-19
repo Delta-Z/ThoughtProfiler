@@ -28,6 +28,7 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:23.1.1'
     compile 'com.android.support:design:23.1.1'
+    compile 'com.google.guava:guava:19.0'
     compile 'org.achartengine:achartengine:1.2.0'
     compile files('libs/commons-lang3-3.4.jar')
 }

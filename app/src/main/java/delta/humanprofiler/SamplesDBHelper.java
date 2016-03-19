@@ -15,8 +15,6 @@ import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import delta.humanprofiler.R;
-
 /**
  * Created by Delta on 29/11/2015.
  */
@@ -28,12 +26,19 @@ public class SamplesDBHelper extends SQLiteOpenHelper {
     private static final int MAX_CATEGORY_LENGTH = 64;
 
     private static SamplesDBHelper mInstance = null;
+    private ArrayList<ChangeWatcher> mChangeWatchers;
 
-    public interface ChangeWatcher {
-        abstract boolean onChange();
+    private SamplesDBHelper(Context context) {
+        super(context, context.getString(R.string.db_name) + "." + SAMPLES_TABLE_NAME, null, DATABASE_VERSION);
+        mChangeWatchers = new ArrayList<ChangeWatcher>();
     }
 
-    private ArrayList<ChangeWatcher> mChangeWatchers;
+    public static synchronized SamplesDBHelper getInstance(Context context) {
+        if (mInstance == null) {
+            mInstance = new SamplesDBHelper(context);
+        }
+        return mInstance;
+    }
 
     private void onChange() {
         synchronized (mChangeWatchers) {
@@ -51,19 +56,6 @@ public class SamplesDBHelper extends SQLiteOpenHelper {
         synchronized (mChangeWatchers) {
             mChangeWatchers.add(watcher);
         }
-    }
-
-    public static synchronized SamplesDBHelper getInstance(Context context){
-        if(mInstance == null)
-        {
-            mInstance = new SamplesDBHelper(context);
-        }
-        return mInstance;
-    }
-
-    private SamplesDBHelper(Context context) {
-        super(context, context.getString(R.string.db_name) + "." + SAMPLES_TABLE_NAME, null, DATABASE_VERSION);
-        mChangeWatchers = new ArrayList<ChangeWatcher>();
     }
 
     @Override
@@ -166,5 +158,9 @@ public class SamplesDBHelper extends SQLiteOpenHelper {
         return WordUtils.capitalize(
                 WordUtils.wrap(name.toString().trim(), MAX_CATEGORY_LENGTH, "\n", true)
                         .split("\n")[0]);
+    }
+
+    public interface ChangeWatcher {
+        boolean onChange();
     }
 }
