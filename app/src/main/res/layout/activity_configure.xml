@@ -70,7 +70,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:onClick="changeSchedule"
-                android:text="Configure Polling Hours" />
+                android:text="@string/configure_schedule_and_frequency" />
 
             <TextView
                 android:layout_width="match_parent"

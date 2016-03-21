@@ -21,6 +21,7 @@ public class ConfigureActivity extends AppCompatActivity {
     public static final String POLLING_ENABLED = "POLLING_ENABLED";
     public static final String NOTIFICATION_PRIORITY_HIGH = "NOTIFICATION_PRIORITY_HIGH";
     public static final String MISSED_AS_DND = "MISSED_AS_DND";
+    public static final String NUM_POLLS_PER_DAY = "NUM_POLLS_PER_DAY";
 
     private static final SimpleArrayMap<String, Boolean> BOOLEAN_DEFAULTS;
 
@@ -32,7 +33,7 @@ public class ConfigureActivity extends AppCompatActivity {
         BOOLEAN_DEFAULTS = map;
     }
 
-    static private SharedPreferences getPreferences(Context context) {
+    static public SharedPreferences getPreferences(Context context) {
         return context.getSharedPreferences(context.getString(R.string.app_name), MODE_PRIVATE);
     }
 
@@ -49,10 +50,15 @@ public class ConfigureActivity extends AppCompatActivity {
             actionBar.setTitle("Configure " + getString(R.string.app_name));
             actionBar.setIcon(R.mipmap.ic_launcher);
         }
-        boolean polling_enabled = getBooleanSetting(getApplicationContext(), POLLING_ENABLED);
+
+        final Context context = getApplicationContext();
+        ((DailySampler) NotificationPublisher.sampler).setNumPollsPerDay(
+                getPreferences(context).getInt(ConfigureActivity.NUM_POLLS_PER_DAY, 1));
+
+        boolean polling_enabled = getBooleanSetting(context, POLLING_ENABLED);
         if (polling_enabled ^ NotificationPublisher.isActive()) {
             if (polling_enabled) {
-                NotificationPublisher.scheduleNotification(ConfigureActivity.this);
+                NotificationPublisher.startFiringNotifications(ConfigureActivity.this);
             } else {
                 NotificationPublisher.pauseNotifications(ConfigureActivity.this, false);
             }
@@ -62,15 +68,16 @@ public class ConfigureActivity extends AppCompatActivity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    NotificationPublisher.scheduleNotification(ConfigureActivity.this);
+                    NotificationPublisher.startFiringNotifications(ConfigureActivity.this);
                     Toast.makeText(
-                            getApplicationContext(), getText(R.string.you_will_be_polled),
+                            context, getText(R.string.you_will_be_polled),
                             Toast.LENGTH_SHORT)
                             .show();
                 } else {
                     NotificationPublisher.pauseNotifications(ConfigureActivity.this, false);
                 }
-                getPreferences(getApplicationContext()).edit().putBoolean(POLLING_ENABLED, NotificationPublisher.isActive()).commit();
+                getPreferences(context).edit().putBoolean(POLLING_ENABLED,
+                        NotificationPublisher.isActive()).commit();
                 refreshPauseButton();
             }
         });
@@ -78,7 +85,7 @@ public class ConfigureActivity extends AppCompatActivity {
                 NOTIFICATION_PRIORITY_HIGH);
         initBooleanSettingToggle(R.id.configure_missed_as_dnd_btn,
                 MISSED_AS_DND);
-        SamplesDBHelper.getInstance(getApplicationContext()).registerWatcher(new SamplesDBHelper.ChangeWatcher() {
+        SamplesDBHelper.getInstance(context).registerWatcher(new SamplesDBHelper.ChangeWatcher() {
             @Override
             public boolean onChange() {
                 if (ConfigureActivity.this.isFinishing() || ConfigureActivity.this.isDestroyed()) {
@@ -97,7 +104,8 @@ public class ConfigureActivity extends AppCompatActivity {
         toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                getPreferences(getApplicationContext()).edit().putBoolean(setting, isChecked).commit();
+                getPreferences(getApplicationContext()).edit().putBoolean(setting, isChecked)
+                        .commit();
             }
         });
     }
@@ -148,8 +156,10 @@ public class ConfigureActivity extends AppCompatActivity {
     }
 
     public void viewData(View view) {
-        if (SamplesDBHelper.getInstance(getApplicationContext()).numSamples() < MIN_SAMPLES_THRESHOLD) {
-            Toast.makeText(this, "You cannot view data before you have been sampled " + MIN_SAMPLES_THRESHOLD + " times!", Toast.LENGTH_LONG).show();
+        if (SamplesDBHelper.getInstance(getApplicationContext()).numSamples() <
+                MIN_SAMPLES_THRESHOLD) {
+            Toast.makeText(this, "You cannot view data before you have been sampled " +
+                    MIN_SAMPLES_THRESHOLD + " times!", Toast.LENGTH_LONG).show();
             return;
         }
         startActivity(new Intent(this, ViewDataActivity.class));
@@ -162,6 +172,6 @@ public class ConfigureActivity extends AppCompatActivity {
     }
 
     public void changeSchedule(View view) {
-        startActivity(new Intent(this, ScheduleActivity.class));
+        startActivity(new Intent(this, ConfigureScheduleActivity.class));
     }
 }

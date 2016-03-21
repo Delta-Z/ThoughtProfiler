@@ -28,6 +28,7 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
     private static final String KEY_ID = "_id";
 
     private static ScheduleDBHelper mInstance = null;
+    private static RangeSet<Long> mIntervals = null;
 
     private ScheduleDBHelper(Context context) {
         super(context, context.getString(R.string.db_name) + "." + SCHEDULE_TABLE_NAME, null, DATABASE_VERSION);
@@ -56,6 +57,12 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         return Pair.of(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
     }
 
+    static String makeTimeString(Context context, long milliseconds) {
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTimeInMillis(milliseconds);
+        return android.text.format.DateFormat.getTimeFormat(context).format(calendar.getTime());
+    }
+
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE " + SCHEDULE_TABLE_NAME + " (" +
@@ -76,13 +83,12 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         IntervalsCursor cursor = new IntervalsCursor(getReadableDatabase().query(
                 SCHEDULE_TABLE_NAME, new String[]{KEY_ID, KEY_START, KEY_END}, null, null, null,
                 null, KEY_START));
-        if (!cursor.cursor().moveToFirst()) {
-            Log.wtf(getClass().getCanonicalName(), "Unable to reset the cursor.");
-        }
+        cursor.cursor().moveToFirst();
         return cursor;
     }
 
-    boolean deleteInterval(long id) {
+    synchronized boolean deleteInterval(long id) {
+        mIntervals = null;
         SQLiteDatabase db = getWritableDatabase();
         if (db.delete(SCHEDULE_TABLE_NAME, KEY_ID + "=?", new String[]{Long.toString(id)}) == 0) {
             Log.e(getClass().getCanonicalName(),
@@ -93,14 +99,29 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
         return true;
     }
 
-    synchronized boolean addIntervals(RangeSet<Long> intervals) {
-        RangeSet<Long> allIntervals = TreeRangeSet.create(intervals);
+    synchronized RangeSet<Long> getIntervals() {
+        if (mIntervals != null) {
+            return mIntervals;
+        }
+        RangeSet<Long> mIntervals = TreeRangeSet.create();
         IntervalsCursor cursor = getIntervalsCursor();
         while (cursor.isValid()) {
-            allIntervals.add(cursor.range());
+            mIntervals.add(cursor.range());
             cursor.advance();
         }
         cursor.cursor().close();
+        return mIntervals;
+    }
+
+    boolean isCoveredByIntervals(Calendar calendar) {
+        long timestamp = timestampFromHourAndMinute(
+                calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
+        return getIntervals().contains(timestamp);
+    }
+
+    synchronized boolean addIntervals(RangeSet<Long> intervals) {
+        RangeSet<Long> allIntervals = getIntervals();
+        allIntervals.addAll(intervals);
 
         SQLiteDatabase db = getWritableDatabase();
         db.delete(SCHEDULE_TABLE_NAME, null, null);
@@ -116,6 +137,7 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
             }
             row.clear();
         }
+        mIntervals = allIntervals;
         return true;
     }
 

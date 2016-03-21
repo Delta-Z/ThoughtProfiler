@@ -1,5 +1,6 @@
 package delta.humanprofiler;
 
+import android.content.Context;
 import android.os.SystemClock;
 
 /**
@@ -7,7 +8,7 @@ import android.os.SystemClock;
  */
 public class MockSampler implements Sampler {
     @Override
-    public long getNextSamplingTime() {
+    public long getNextSamplingTime(Context unused_context) {
         return SystemClock.elapsedRealtime() + 5000;
     }
 }

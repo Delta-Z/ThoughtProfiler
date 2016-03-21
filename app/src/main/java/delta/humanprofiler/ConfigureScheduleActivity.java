@@ -12,7 +12,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ResourceCursorAdapter;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.TimePicker;
+import android.widget.Toast;
 
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
@@ -20,37 +23,28 @@ import com.google.common.collect.Range;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.util.Date;
 
-public class ScheduleActivity extends AppCompatActivity {
+public class ConfigureScheduleActivity extends AppCompatActivity {
 
     private IntervalsAdapter mAdapter;
-
-    private static long parseTimeString(String string) throws ParseException {
-        Date date = DateFormat.getTimeInstance(DateFormat.SHORT).parse(string);
-        return date.getTime();
-    }
-
-    private static String makeTimeString(long milliseconds) {
-        Date date = new Date();
-        date.setTime(milliseconds);
-        // TODO: inconsistent with using Calendar elsewhere.
-        return DateFormat.getTimeInstance(DateFormat.SHORT).format(date);
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_schedule);
+        setContentView(R.layout.activity_configure_schedule);
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
-            actionBar.setTitle(getString(R.string.polling_disabled_activity_title));
+            actionBar.setTitle(getString(R.string.configure_schedule_and_frequency));
             actionBar.setIcon(R.mipmap.ic_launcher);
         }
         mAdapter = new IntervalsAdapter(this);
         ListView listView = (ListView) findViewById(R.id.schedule_list_view);
         listView.setAdapter(mAdapter);
+        SeekBar pollingFrequency = (SeekBar) findViewById(R.id.maxPollsPerDayBar);
+        pollingFrequency.setOnSeekBarChangeListener(
+                new FrequencySeekerListener((TextView) findViewById(R.id.maxPollsPerDayText),
+                        getApplicationContext()));
         // Add interval handler?
         // *********************
     }
@@ -59,11 +53,56 @@ public class ScheduleActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         mAdapter.resetCursor();
+
+        SeekBar pollingFrequency = (SeekBar) findViewById(R.id.maxPollsPerDayBar);
+        pollingFrequency.setProgress(
+                ((DailySampler) NotificationPublisher.sampler).getNumPollsPerDay() - 1);
+
+        Context context = getApplicationContext();
+        if (BuildConfig.DEBUG) {
+            Toast.makeText(
+                    context,
+                    DateFormat.getInstance().format(
+                            new Date(NotificationPublisher.sampler.getNextSamplingTime(context))),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     public void addInterval(View view) {
         ScheduleTimePicker picker = new ScheduleTimePicker(mAdapter, true, 0, true, 0, null);
         picker.run();
+    }
+
+    private class FrequencySeekerListener implements SeekBar.OnSeekBarChangeListener {
+
+        private TextView mInfoText;
+        private DailySampler mSampler;
+        private Context mContext;
+
+        public FrequencySeekerListener(TextView infoText, Context context) {
+            mInfoText = infoText;
+            mSampler = (DailySampler) NotificationPublisher.sampler;
+            mContext = context;
+        }
+
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            int numPolls = progress + 1;
+            mInfoText.setText(String.format("at most %d per day", numPolls));
+            if (numPolls != mSampler.getNumPollsPerDay()) {
+                mSampler.setNumPollsPerDay(numPolls);
+                ConfigureActivity.getPreferences(mContext).edit().putInt(
+                        ConfigureActivity.NUM_POLLS_PER_DAY, numPolls).commit();
+            }
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+        }
     }
 
     private class ScheduleTimePicker implements TimePickerDialog.OnTimeSetListener {
@@ -87,7 +126,8 @@ public class ScheduleActivity extends AppCompatActivity {
                 if (mStart == mEnd) {
                     return;
                 }
-                ScheduleDBHelper dbHelper = ScheduleDBHelper.getInstance(ScheduleActivity.this);
+                ScheduleDBHelper dbHelper =
+                        ScheduleDBHelper.getInstance(ConfigureScheduleActivity.this);
                 if (mIntervalToDelete != null && !dbHelper.deleteInterval(mIntervalToDelete)) {
                     return;
                 }
@@ -130,8 +170,8 @@ public class ScheduleActivity extends AppCompatActivity {
             }
             Pair<Integer, Integer> hourAndMinute =
                     ScheduleDBHelper.hourAndMinuteFromTimestamp(mAskForStart ? mStart : mEnd);
-            TimePickerDialog timePickerDialog = new TimePickerDialog(ScheduleActivity.this, this,
-                    hourAndMinute.getLeft(), hourAndMinute.getRight(),
+            TimePickerDialog timePickerDialog = new TimePickerDialog(ConfigureScheduleActivity.this,
+                    this, hourAndMinute.getLeft(), hourAndMinute.getRight(),
                     android.text.format.DateFormat.is24HourFormat(getApplicationContext()));
             timePickerDialog.setTitle(mAskForStart ? "Start Time" : "End Time");
             timePickerDialog.show();
@@ -176,14 +216,15 @@ public class ScheduleActivity extends AppCompatActivity {
                     picker.run();
                 }
             };
-            fromBtn.setText(makeTimeString(startTime));
+            fromBtn.setText(ScheduleDBHelper.makeTimeString(context, startTime));
             fromBtn.setOnClickListener(updateBtnListener);
-            toBtn.setText(makeTimeString(endTime));
+            toBtn.setText(ScheduleDBHelper.makeTimeString(context, endTime));
             toBtn.setOnClickListener(updateBtnListener);
             removeBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (ScheduleDBHelper.getInstance(ScheduleActivity.this).deleteInterval(id)) {
+                    if (ScheduleDBHelper.getInstance(ConfigureScheduleActivity.this)
+                            .deleteInterval(id)) {
                         resetCursor();
                     }
                 }

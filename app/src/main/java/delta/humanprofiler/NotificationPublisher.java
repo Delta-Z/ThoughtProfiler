@@ -14,6 +14,8 @@ import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.util.Calendar;
+
 public class NotificationPublisher extends BroadcastReceiver {
 
     static final int SCHEDULE = 1;
@@ -22,12 +24,11 @@ public class NotificationPublisher extends BroadcastReceiver {
     static final int DND = 5;
     static final int NOTIFICATION_TIMEOUT = 60;  // seconds
     public static String COMMAND = "delta.humanprofiler.cmd";
+    static public Sampler sampler = new DailySampler();
     // Whether polling is currently active (or paused through configuration activity).
     static private boolean active = false;
     // Whether polling activity is currently active.
     static private boolean polling = false;
-
-    static private Sampler sampler = new MockSampler();
 
     static boolean isActive() {
         return active;
@@ -65,14 +66,15 @@ public class NotificationPublisher extends BroadcastReceiver {
         return builder.build();
     }
 
-    public static synchronized void scheduleNotification(Activity activity) {
+    public static synchronized void startFiringNotifications(Activity activity) {
         if (activity instanceof ConfigureActivity) {
             active = true;
         } else if (activity instanceof PollActivity) {
             polling = false;
         } else {
             Log.e(NotificationPublisher.class.getCanonicalName(),
-                    "unexpected scheduleNotification from " + activity.getClass().getCanonicalName());
+                    "unexpected startFiringNotifications from " +
+                            activity.getClass().getCanonicalName());
         }
         activity.sendBroadcast(newBroadcastIntent(activity, SCHEDULE));
     }
@@ -98,14 +100,26 @@ public class NotificationPublisher extends BroadcastReceiver {
         notificationManager.cancel(NOTIFY);
     }
 
-    private void scheduleIntent(Context context, Intent intent, long timestamp, boolean wakeup) {
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent,
+    private void scheduleNotification(Context context, boolean wakeup) {
+        PendingIntent pendingIntent =
+                PendingIntent.getBroadcast(context, 0, newBroadcastIntent(context, NOTIFY),
                 PendingIntent.FLAG_UPDATE_CURRENT);
 
         AlarmManager alarmManager =
                 (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
-        alarmManager.set(wakeup ? AlarmManager.ELAPSED_REALTIME_WAKEUP : AlarmManager.ELAPSED_REALTIME,
-                timestamp, pendingIntent);
+        alarmManager.set(wakeup ? AlarmManager.RTC_WAKEUP : AlarmManager.RTC,
+                sampler.getNextSamplingTime(context), pendingIntent);
+    }
+
+    private void scheduleNotificationExpiry(Context context, long delay) {
+        PendingIntent pendingIntent =
+                PendingIntent.getBroadcast(context, 0, newBroadcastIntent(context, DELETE),
+                        PendingIntent.FLAG_UPDATE_CURRENT);
+
+        AlarmManager alarmManager =
+                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        alarmManager.set(AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + delay, pendingIntent);
     }
 
     public void onReceive(Context context, Intent intent) {
@@ -125,17 +139,24 @@ public class NotificationPublisher extends BroadcastReceiver {
                             context.getString(R.string.stop_notifications_hint),
                             Toast.LENGTH_SHORT).show();
                 case SCHEDULE:
-                    scheduleIntent(context, newBroadcastIntent(context, NOTIFY),
-                            sampler.getNextSamplingTime(), true);
+                    scheduleNotification(context, true);
                     break;
                 case NOTIFY:
+                    if (ScheduleDBHelper.getInstance(context).isCoveredByIntervals(
+                            Calendar.getInstance())) {
+                        // Not a valid time to show notification, skip and schedule the next one.
+                        Log.i(getClass().getCanonicalName(),
+                                "Skipped notification because of blackout schedule.");
+                        context.sendBroadcast(newBroadcastIntent(context, SCHEDULE));
+                        break;
+                    }
                     notificationManager.notify(NOTIFY, newNotification(context));
-                    long timestamp = SystemClock.elapsedRealtime() + NOTIFICATION_TIMEOUT * 1000;
-                    scheduleIntent(context, newBroadcastIntent(context, DELETE), timestamp, true);
+                    scheduleNotificationExpiry(context, NOTIFICATION_TIMEOUT * 1000);
                     break;
                 case DELETE:
                     notificationManager.cancel(NOTIFY);
-                    if (ConfigureActivity.getBooleanSetting(context, ConfigureActivity.MISSED_AS_DND)) {
+                    if (ConfigureActivity.getBooleanSetting(context,
+                            ConfigureActivity.MISSED_AS_DND)) {
                         dbHelper.insertSample(context.getString(R.string.do_not_disturb_category));
                     }
                     context.sendBroadcast(newBroadcastIntent(context, SCHEDULE));
