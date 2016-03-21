@@ -10,22 +10,17 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-public class Utils {
+import static delta.humanprofiler.SamplesDBHelper.isValidUserCategory;
 
-    static public boolean IsValidUserCategory(Context context, String category) {
-        return category.length() > 0 &&
-                !category.equalsIgnoreCase(context.getString(R.string.do_not_disturb_category));
-    }
+public class Utils {
 
     static public ViewGroup CreateCategoryButtons(Activity activity, int containerId,
             View.OnClickListener listener, boolean allowAddNew) {
         ViewGroup container = (ViewGroup) activity.findViewById(containerId);
         container.removeAllViews();
+        Context context = activity.getApplicationContext();
         for (String category :
-                SamplesDBHelper.getInstance(activity.getApplicationContext()).getCategories()) {
-            if (!IsValidUserCategory(activity, category)) {
-                continue;
-            }
+                SamplesDBHelper.getInstance(context).getCategories(context, true)) {
             Button button = new Button(activity);
             button.setText(category);
             button.setOnClickListener(listener);
@@ -39,28 +34,6 @@ public class Utils {
             container.addView(addNew);
         }
         return container;
-    }
-
-    private static abstract class DialogClickListener implements DialogInterface.OnClickListener {
-        private final EditText editText;
-        private final Activity activity;
-
-        public DialogClickListener(Activity activity, EditText editText) {
-            this.activity = activity;
-            this.editText = editText;
-        }
-
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            String category = editText.getText().toString();
-            if (IsValidUserCategory(activity, category)) {
-                performAction(category);
-            } else {
-                Toast.makeText(activity, "Invalid category name.", Toast.LENGTH_LONG).show();
-            }
-        }
-
-        public abstract void performAction(String category);
     }
 
     static private AlertDialog CreateDialog(final Activity activity, final String title,
@@ -101,5 +74,27 @@ public class Utils {
                         activity.answer(new_category);
                     }
                 });
+    }
+
+    private static abstract class DialogClickListener implements DialogInterface.OnClickListener {
+        private final EditText editText;
+        private final Activity activity;
+
+        public DialogClickListener(Activity activity, EditText editText) {
+            this.activity = activity;
+            this.editText = editText;
+        }
+
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+            String category = editText.getText().toString();
+            if (isValidUserCategory(activity.getApplicationContext(), category)) {
+                performAction(category);
+            } else {
+                Toast.makeText(activity, "Invalid category name.", Toast.LENGTH_LONG).show();
+            }
+        }
+
+        public abstract void performAction(String category);
     }
 }

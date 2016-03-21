@@ -13,6 +13,7 @@ import org.apache.commons.lang3.text.WordUtils;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,6 +39,11 @@ public class SamplesDBHelper extends SQLiteOpenHelper {
             mInstance = new SamplesDBHelper(context);
         }
         return mInstance;
+    }
+
+    static public boolean isValidUserCategory(Context context, String category) {
+        return category.length() > 0 &&
+                !category.equalsIgnoreCase(context.getString(R.string.do_not_disturb_category));
     }
 
     private void onChange() {
@@ -86,15 +92,17 @@ public class SamplesDBHelper extends SQLiteOpenHelper {
         return count;
     }
 
-    String[] getCategories() {
+    List<String> getCategories(Context context, boolean onlyUserDefined) {
         String[] columns = {KEY_CATEGORY};
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.query(true, SAMPLES_TABLE_NAME, columns, null, null, null, null, KEY_CATEGORY, null);
-        String[] categories = new String[cursor.getCount()];
+        ArrayList<String> categories = new ArrayList<String>(cursor.getCount());
         if (cursor.moveToFirst()) {
-            int i = 0;
             do {
-                categories[i++] = cursor.getString(0);
+                String category = cursor.getString(0);
+                if (!onlyUserDefined || isValidUserCategory(context, category)) {
+                    categories.add(category);
+                }
             } while (cursor.moveToNext());
         }
         cursor.close();

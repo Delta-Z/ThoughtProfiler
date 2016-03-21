@@ -117,11 +117,18 @@ public class ConfigureActivity extends AppCompatActivity {
     }
 
     private void refreshNumSamples() {
+        Context context = getApplicationContext();
+        SamplesDBHelper dbHelper = SamplesDBHelper.getInstance(getApplicationContext());
         TextView numSamplesIndicator = (TextView) findViewById(R.id.numSamples);
-        long numSamples = SamplesDBHelper.getInstance(getApplicationContext()).numSamples();
+        long numSamples = dbHelper.numSamples();
         numSamplesIndicator.setText(numSamples + " samples");
         Button changeLastButton = (Button) findViewById(R.id.change_last);
         changeLastButton.setEnabled(numSamples > 0);
+        Button clearDataButton = (Button) findViewById(R.id.clear_data);
+        clearDataButton.setEnabled(numSamples > 0);
+        Button editCategoriesButton = (Button) findViewById(R.id.edit_categories);
+        editCategoriesButton.setEnabled(numSamples > 0 &&
+                !dbHelper.getCategories(context, true).isEmpty());
     }
 
     private void refreshPauseButton() {
