@@ -53,12 +53,12 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         mAdapter.resetCursor();
+        Context context = getApplicationContext();
 
         SeekBar pollingFrequency = (SeekBar) findViewById(R.id.maxPollsPerDayBar);
         pollingFrequency.setProgress(
-                ((DailySampler) NotificationPublisher.sampler).getNumPollsPerDay() - 1);
+                ((DailySampler) NotificationPublisher.sampler).getNumPollsPerDay(context) - 1);
 
-        Context context = getApplicationContext();
         if (BuildConfig.DEBUG) {
             Toast.makeText(
                     context,
@@ -69,7 +69,7 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
     }
 
     public void addInterval(View view) {
-        ScheduleTimePicker picker = new ScheduleTimePicker(mAdapter, true, 0, true, 0, null);
+        ScheduleTimePicker picker = new ScheduleTimePicker(mAdapter, true, -1, true, -1, null);
         picker.run();
     }
 
@@ -89,8 +89,9 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
             int numPolls = progress + 1;
             mInfoText.setText(String.format("at most %d per day", numPolls));
-            if (numPolls != mSampler.getNumPollsPerDay()) {
-                mSampler.setNumPollsPerDay(numPolls);
+            Context context = getApplicationContext();
+            if (numPolls != mSampler.getNumPollsPerDay(context)) {
+                mSampler.setNumPollsPerDay(context, numPolls);
                 ConfigureActivity.getPreferences(mContext).edit().putInt(
                         ConfigureActivity.NUM_POLLS_PER_DAY, numPolls).commit();
             }
@@ -168,8 +169,12 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
             if (!(mAskForEnd || mAskForStart)) {
                 return false;
             }
+            long defaultValue = mAskForStart ? mStart : mEnd;
+            if (defaultValue < 0) {
+                defaultValue = Math.max(0, Math.max(mStart, mEnd));
+            }
             Pair<Integer, Integer> hourAndMinute =
-                    ScheduleDBHelper.hourAndMinuteFromTimestamp(mAskForStart ? mStart : mEnd);
+                    ScheduleDBHelper.hourAndMinuteFromTimestamp(defaultValue);
             TimePickerDialog timePickerDialog = new TimePickerDialog(ConfigureScheduleActivity.this,
                     this, hourAndMinute.getLeft(), hourAndMinute.getRight(),
                     android.text.format.DateFormat.is24HourFormat(getApplicationContext()));

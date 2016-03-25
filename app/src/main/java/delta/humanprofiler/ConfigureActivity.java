@@ -53,7 +53,7 @@ public class ConfigureActivity extends AppCompatActivity {
 
         final Context context = getApplicationContext();
         ((DailySampler) NotificationPublisher.sampler).setNumPollsPerDay(
-                getPreferences(context).getInt(ConfigureActivity.NUM_POLLS_PER_DAY, 1));
+                context, getPreferences(context).getInt(ConfigureActivity.NUM_POLLS_PER_DAY, 1));
 
         boolean polling_enabled = getBooleanSetting(context, POLLING_ENABLED);
         if (polling_enabled ^ NotificationPublisher.isActive()) {
