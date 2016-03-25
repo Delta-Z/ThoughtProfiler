@@ -10,5 +10,5 @@
     <string name="stop_notifications_hint">To stop polling completely, disable it in the application settings.</string>
     <string name="configure_schedule_and_frequency">Configure Polling Hours and Frequency</string>
     <string name="polling_disabled_title">Times When Polling Is Disabled</string>
-    <string name="new_interval">New Interval</string>
+    <string name="new_interval">Add</string>
 </resources>
