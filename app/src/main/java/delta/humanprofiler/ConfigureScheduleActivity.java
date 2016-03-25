@@ -45,8 +45,6 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
         pollingFrequency.setOnSeekBarChangeListener(
                 new FrequencySeekerListener((TextView) findViewById(R.id.maxPollsPerDayText),
                         getApplicationContext()));
-        // Add interval handler?
-        // *********************
     }
 
     @Override

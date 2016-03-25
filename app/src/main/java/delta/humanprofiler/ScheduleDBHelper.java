@@ -70,8 +70,8 @@ public class ScheduleDBHelper extends SQLiteOpenHelper {
                 KEY_END + " INTEGER NOT NULL, " +
                 "_id INTEGER PRIMARY KEY);");
         ContentValues defaultValue = new ContentValues();
-        defaultValue.put(KEY_START, timestampFromHourAndMinute(7, 0));
-        defaultValue.put(KEY_END, timestampFromHourAndMinute(23, 0));
+        defaultValue.put(KEY_START, timestampFromHourAndMinute(0, 0));
+        defaultValue.put(KEY_END, timestampFromHourAndMinute(7, 0));
         db.insert(SCHEDULE_TABLE_NAME, null, defaultValue);
     }
 
