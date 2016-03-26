@@ -41,10 +41,6 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
         mAdapter = new IntervalsAdapter(this);
         ListView listView = (ListView) findViewById(R.id.schedule_list_view);
         listView.setAdapter(mAdapter);
-        SeekBar pollingFrequency = (SeekBar) findViewById(R.id.maxPollsPerDayBar);
-        pollingFrequency.setOnSeekBarChangeListener(
-                new FrequencySeekerListener((TextView) findViewById(R.id.maxPollsPerDayText),
-                        getApplicationContext()));
     }
 
     @Override
@@ -54,8 +50,16 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
         Context context = getApplicationContext();
 
         SeekBar pollingFrequency = (SeekBar) findViewById(R.id.maxPollsPerDayBar);
-        pollingFrequency.setProgress(
-                ((DailySampler) NotificationPublisher.sampler).getNumPollsPerDay(context) - 1);
+        if (NotificationPublisher.sampler instanceof DailySampler) {
+            pollingFrequency.setEnabled(true);
+            pollingFrequency.setProgress(
+                    ((DailySampler) NotificationPublisher.sampler).getNumPollsPerDay(context) - 1);
+            pollingFrequency.setOnSeekBarChangeListener(
+                    new FrequencySeekerListener((TextView) findViewById(R.id.maxPollsPerDayText),
+                            getApplicationContext()));
+        } else {
+            pollingFrequency.setEnabled(false);
+        }
 
         if (BuildConfig.DEBUG) {
             Toast.makeText(
@@ -88,7 +92,7 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
             int numPolls = progress + 1;
             mInfoText.setText(String.format("at most %d per day", numPolls));
             Context context = getApplicationContext();
-            if (numPolls != mSampler.getNumPollsPerDay(context)) {
+            if (fromUser && numPolls != mSampler.getNumPollsPerDay(context)) {
                 mSampler.setNumPollsPerDay(context, numPolls);
                 ConfigureActivity.getPreferences(mContext).edit().putInt(
                         ConfigureActivity.NUM_POLLS_PER_DAY, numPolls).commit();

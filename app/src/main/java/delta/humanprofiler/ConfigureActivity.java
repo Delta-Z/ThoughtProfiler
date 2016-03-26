@@ -12,6 +12,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -52,8 +53,11 @@ public class ConfigureActivity extends AppCompatActivity {
         }
 
         final Context context = getApplicationContext();
-        ((DailySampler) NotificationPublisher.sampler).setNumPollsPerDay(
-                context, getPreferences(context).getInt(ConfigureActivity.NUM_POLLS_PER_DAY, 1));
+        if (NotificationPublisher.sampler instanceof DailySampler) {
+            ((DailySampler) NotificationPublisher.sampler).setNumPollsPerDay(
+                    context,
+                    getPreferences(context).getInt(ConfigureActivity.NUM_POLLS_PER_DAY, 1));
+        }
 
         boolean polling_enabled = getBooleanSetting(context, POLLING_ENABLED);
         if (polling_enabled ^ NotificationPublisher.isActive()) {
@@ -91,11 +95,26 @@ public class ConfigureActivity extends AppCompatActivity {
                 if (ConfigureActivity.this.isFinishing() || ConfigureActivity.this.isDestroyed()) {
                     return false;
                 }
-                ConfigureActivity.this.refreshNumSamples();
+                ConfigureActivity.this.refreshUI();
                 return true;
             }
         });
-        refreshNumSamples();
+
+        if (BuildConfig.DEBUG) {
+            Button schdButton = new Button(this);
+            schdButton.setText("Cycle Schedulers");
+            schdButton.setOnClickListener(
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            NotificationPublisher.switchSampler(v.getContext());
+                        }
+                    });
+            LinearLayout buttonsList = (LinearLayout) findViewById(R.id.configure_buttons_list);
+            buttonsList.addView(schdButton);
+        }
+
+        refreshUI();
     }
 
     private void initBooleanSettingToggle(int buttonId, final String setting) {
@@ -116,7 +135,7 @@ public class ConfigureActivity extends AppCompatActivity {
         refreshPauseButton();
     }
 
-    private void refreshNumSamples() {
+    private void refreshUI() {
         Context context = getApplicationContext();
         SamplesDBHelper dbHelper = SamplesDBHelper.getInstance(getApplicationContext());
         TextView numSamplesIndicator = (TextView) findViewById(R.id.numSamples);

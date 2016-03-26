@@ -68,6 +68,16 @@ public class NotificationPublisher extends BroadcastReceiver {
         return builder.build();
     }
 
+    public static synchronized boolean switchSampler(Context context) {
+        if (sampler instanceof MockSampler) {
+            sampler = new DailySampler();
+            return false;
+        }
+        sampler = new MockSampler();
+        NotificationPublisher.scheduleNotification(context, true);
+        return true;
+    }
+
     public static synchronized void startFiringNotifications(Activity activity) {
         Context context = activity.getApplicationContext();
         if (activity instanceof ConfigureActivity) {
@@ -83,7 +93,7 @@ public class NotificationPublisher extends BroadcastReceiver {
                     "unexpected startFiringNotifications from " +
                             activity.getClass().getCanonicalName());
         }
-        new NotificationPublisher().scheduleNotification(context, true);
+        NotificationPublisher.scheduleNotification(context, true);
     }
 
     private static Intent newBroadcastIntent(Context context, int command) {
@@ -113,7 +123,10 @@ public class NotificationPublisher extends BroadcastReceiver {
         notificationManager.cancel(NOTIFY);
     }
 
-    private void scheduleNotification(Context context, boolean wakeup) {
+    private static boolean scheduleNotification(Context context, boolean wakeup) {
+        if (polling || !active) {
+            return false;
+        }
         PendingIntent pendingIntent =
                 PendingIntent.getBroadcast(context, 0, newBroadcastIntent(context, NOTIFY),
                 PendingIntent.FLAG_UPDATE_CURRENT);
@@ -122,6 +135,7 @@ public class NotificationPublisher extends BroadcastReceiver {
                 (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
         alarmManager.set(wakeup ? AlarmManager.RTC_WAKEUP : AlarmManager.RTC,
                 sampler.getNextSamplingTime(context), pendingIntent);
+        return true;
     }
 
     private void scheduleNotificationExpiry(Context context, long delay) {
