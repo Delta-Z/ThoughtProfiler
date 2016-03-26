@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="delta.humanprofiler"
-    android:versionCode="1"
-    android:versionName="0.1">
+    package="delta.humanprofiler">
 
     <uses-sdk android:minSdkVersion="19" />
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -34,7 +34,15 @@
             android:launchMode="singleTask"
             android:taskAffinity="" />
 
-        <receiver android:name=".NotificationPublisher" />
+        <receiver
+            android:name=".NotificationPublisher"
+            android:enabled="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"></action>
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
 
         <activity android:name=".ViewDataActivity" />
         <activity android:name=".ConfigureScheduleActivity" />

@@ -6,11 +6,12 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.os.SystemClock;
-import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -18,12 +19,11 @@ import java.util.Calendar;
 
 public class NotificationPublisher extends BroadcastReceiver {
 
-    static final int SCHEDULE = 1;
-    static final int NOTIFY = 2;
-    static final int DELETE = 3;
-    static final int DND = 5;
+    static final int NOTIFY = 1;
+    static final int DELETE = 2;
+    static final int DND = 3;
     static final int NOTIFICATION_TIMEOUT = 60;  // seconds
-    public static String COMMAND = "delta.humanprofiler.cmd";
+    public static String COMMAND = "delta.humanprofiler.NOTIFICATION_ACTION";
     static public Sampler sampler = new DailySampler();
     // Whether polling is currently active (or paused through configuration activity).
     static private boolean active = false;
@@ -35,7 +35,7 @@ public class NotificationPublisher extends BroadcastReceiver {
     }
 
     static private Notification newNotification(Context context) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
+        Notification.Builder builder = new Notification.Builder(context);
         Intent pollIntent = new Intent(context, PollActivity.class);
         pollIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         PendingIntent notifyIntent =
@@ -60,15 +60,22 @@ public class NotificationPublisher extends BroadcastReceiver {
                 .setSmallIcon(R.drawable.ic_question)
                 .setLargeIcon(BitmapFactory.decodeResource(context.getResources(),
                         R.mipmap.ic_launcher))
-                .setPriority(ConfigureActivity.getBooleanSetting(context, ConfigureActivity.NOTIFICATION_PRIORITY_HIGH) ? Notification.PRIORITY_MAX : Notification.PRIORITY_DEFAULT)
+                .setPriority(ConfigureActivity.getBooleanSetting(context,
+                        ConfigureActivity.NOTIFICATION_PRIORITY_HIGH) ?
+                        Notification.PRIORITY_MAX : Notification.PRIORITY_DEFAULT)
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setAutoCancel(false);
         return builder.build();
     }
 
     public static synchronized void startFiringNotifications(Activity activity) {
+        Context context = activity.getApplicationContext();
         if (activity instanceof ConfigureActivity) {
             active = true;
+            context.getPackageManager().setComponentEnabledSetting(
+                    new ComponentName(context, NotificationPublisher.class),
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP);
         } else if (activity instanceof PollActivity) {
             polling = false;
         } else {
@@ -76,11 +83,12 @@ public class NotificationPublisher extends BroadcastReceiver {
                     "unexpected startFiringNotifications from " +
                             activity.getClass().getCanonicalName());
         }
-        activity.sendBroadcast(newBroadcastIntent(activity, SCHEDULE));
+        new NotificationPublisher().scheduleNotification(context, true);
     }
 
     private static Intent newBroadcastIntent(Context context, int command) {
         Intent intent = new Intent(context, NotificationPublisher.class);
+        intent.setAction(COMMAND);
         intent.putExtra(NotificationPublisher.COMMAND, command);
         return intent;
     }
@@ -90,6 +98,11 @@ public class NotificationPublisher extends BroadcastReceiver {
             polling = true;
         } else {
             active = false;
+            Context context = activity.getApplicationContext();
+            context.getPackageManager().setComponentEnabledSetting(
+                    new ComponentName(context, NotificationPublisher.class),
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP);
         }
         if (!((activity instanceof PollActivity) || (activity instanceof ConfigureActivity))) {
             Log.e(NotificationPublisher.class.getCanonicalName(),
@@ -115,10 +128,11 @@ public class NotificationPublisher extends BroadcastReceiver {
         PendingIntent pendingIntent =
                 PendingIntent.getBroadcast(context, 0, newBroadcastIntent(context, DELETE),
                         PendingIntent.FLAG_UPDATE_CURRENT);
+        //action, data, type, class, and categories
 
         AlarmManager alarmManager =
                 (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        alarmManager.set(AlarmManager.ELAPSED_REALTIME,
+        alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, pendingIntent);
     }
 
@@ -127,8 +141,12 @@ public class NotificationPublisher extends BroadcastReceiver {
             if (polling || !active) {
                 return;
             }
-            int command = intent.getIntExtra(COMMAND, 0);
+            if (intent.getAction().equals("android.intent.action.BOOT_COMPLETED")) {
+                scheduleNotification(context, true);
+                return;
+            }
 
+            int command = intent.getIntExtra(COMMAND, 0);
             NotificationManager notificationManager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             final SamplesDBHelper dbHelper = SamplesDBHelper.getInstance(context);
@@ -138,7 +156,6 @@ public class NotificationPublisher extends BroadcastReceiver {
                     Toast.makeText(context,
                             context.getString(R.string.stop_notifications_hint),
                             Toast.LENGTH_SHORT).show();
-                case SCHEDULE:
                     scheduleNotification(context, true);
                     break;
                 case NOTIFY:
@@ -147,7 +164,7 @@ public class NotificationPublisher extends BroadcastReceiver {
                         // Not a valid time to show notification, skip and schedule the next one.
                         Log.i(getClass().getCanonicalName(),
                                 "Skipped notification because of blackout schedule.");
-                        context.sendBroadcast(newBroadcastIntent(context, SCHEDULE));
+                        scheduleNotification(context, true);
                         break;
                     }
                     notificationManager.notify(NOTIFY, newNotification(context));
@@ -159,7 +176,7 @@ public class NotificationPublisher extends BroadcastReceiver {
                             ConfigureActivity.MISSED_AS_DND)) {
                         dbHelper.insertSample(context.getString(R.string.do_not_disturb_category));
                     }
-                    context.sendBroadcast(newBroadcastIntent(context, SCHEDULE));
+                    scheduleNotification(context, true);
                     break;
                 default:
                     Log.e(getClass().getCanonicalName(), "wrong command id " + command);
