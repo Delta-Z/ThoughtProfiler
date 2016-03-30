@@ -52,11 +52,11 @@ public class ConfigureScheduleActivity extends AppCompatActivity {
         SeekBar pollingFrequency = (SeekBar) findViewById(R.id.maxPollsPerDayBar);
         if (NotificationPublisher.sampler instanceof DailySampler) {
             pollingFrequency.setEnabled(true);
-            pollingFrequency.setProgress(
-                    ((DailySampler) NotificationPublisher.sampler).getNumPollsPerDay(context) - 1);
             pollingFrequency.setOnSeekBarChangeListener(
                     new FrequencySeekerListener((TextView) findViewById(R.id.maxPollsPerDayText),
                             getApplicationContext()));
+            pollingFrequency.setProgress(
+                    ((DailySampler) NotificationPublisher.sampler).getNumPollsPerDay(context) - 1);
         } else {
             pollingFrequency.setEnabled(false);
         }
