@@ -61,6 +61,6 @@ public class PollActivity extends AppCompatActivity {
     @Override
     public void onStop() {
         super.onStop();
-        NotificationPublisher.startFiringNotifications(this);
+        NotificationPublisher.resumeFiringNotifications(this);
     }
 }

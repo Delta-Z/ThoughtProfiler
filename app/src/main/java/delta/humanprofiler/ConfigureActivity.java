@@ -28,7 +28,7 @@ public class ConfigureActivity extends AppCompatActivity {
 
     static {
         SimpleArrayMap<String, Boolean> map = new SimpleArrayMap<String, Boolean>();
-        map.put(POLLING_ENABLED, true);
+        map.put(POLLING_ENABLED, false);
         map.put(NOTIFICATION_PRIORITY_HIGH, false);
         map.put(MISSED_AS_DND, true);
         BOOLEAN_DEFAULTS = map;
@@ -59,20 +59,14 @@ public class ConfigureActivity extends AppCompatActivity {
                     getPreferences(context).getInt(ConfigureActivity.NUM_POLLS_PER_DAY, 1));
         }
 
-        boolean polling_enabled = getBooleanSetting(context, POLLING_ENABLED);
-        if (polling_enabled ^ NotificationPublisher.isActive()) {
-            if (polling_enabled) {
-                NotificationPublisher.startFiringNotifications(ConfigureActivity.this);
-            } else {
-                NotificationPublisher.pauseNotifications(ConfigureActivity.this, false);
-            }
-        }
         ToggleButton pauseButton = (ToggleButton) findViewById(R.id.configure_polling_active_btn);
+        pauseButton.setChecked(getBooleanSetting(getApplicationContext(), POLLING_ENABLED));
         pauseButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                getPreferences(context).edit().putBoolean(POLLING_ENABLED, isChecked).commit();
                 if (isChecked) {
-                    NotificationPublisher.startFiringNotifications(ConfigureActivity.this);
+                    NotificationPublisher.resumeFiringNotifications(ConfigureActivity.this);
                     Toast.makeText(
                             context, getText(R.string.you_will_be_polled),
                             Toast.LENGTH_SHORT)
@@ -80,9 +74,6 @@ public class ConfigureActivity extends AppCompatActivity {
                 } else {
                     NotificationPublisher.pauseNotifications(ConfigureActivity.this, false);
                 }
-                getPreferences(context).edit().putBoolean(POLLING_ENABLED,
-                        NotificationPublisher.isActive()).commit();
-                refreshPauseButton();
             }
         });
         initBooleanSettingToggle(R.id.configure_notification_priority_btn,
@@ -129,12 +120,6 @@ public class ConfigureActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        refreshPauseButton();
-    }
-
     private void refreshUI() {
         Context context = getApplicationContext();
         SamplesDBHelper dbHelper = SamplesDBHelper.getInstance(getApplicationContext());
@@ -148,11 +133,6 @@ public class ConfigureActivity extends AppCompatActivity {
         Button editCategoriesButton = (Button) findViewById(R.id.edit_categories);
         editCategoriesButton.setEnabled(numSamples > 0 &&
                 !dbHelper.getCategories(context, true).isEmpty());
-    }
-
-    private void refreshPauseButton() {
-        ToggleButton pauseButton = (ToggleButton) findViewById(R.id.configure_polling_active_btn);
-        pauseButton.setChecked(NotificationPublisher.isActive());
     }
 
     public void editCategories(View view) {

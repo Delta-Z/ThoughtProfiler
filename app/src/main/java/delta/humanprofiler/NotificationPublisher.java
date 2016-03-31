@@ -24,14 +24,15 @@ public class NotificationPublisher extends BroadcastReceiver {
     static final int DND = 3;
     static final int NOTIFICATION_TIMEOUT = 60;  // seconds
     public static String COMMAND = "delta.humanprofiler.NOTIFICATION_ACTION";
+    // This is effectively a singleton.
     static public Sampler sampler = new DailySampler();
-    // Whether polling is currently active (or paused through configuration activity).
-    static private boolean active = false;
     // Whether polling activity is currently active.
     static private boolean polling = false;
 
-    static boolean isActive() {
-        return active;
+    // Whether polling is currently disabled, i.e., new polling activity can not be launched.
+    static boolean isDisabled(Context context) {
+        return polling ||
+                !ConfigureActivity.getBooleanSetting(context, ConfigureActivity.POLLING_ENABLED);
     }
 
     static private Notification newNotification(Context context) {
@@ -78,10 +79,9 @@ public class NotificationPublisher extends BroadcastReceiver {
         return true;
     }
 
-    public static synchronized void startFiringNotifications(Activity activity) {
+    public static synchronized void resumeFiringNotifications(Activity activity) {
         Context context = activity.getApplicationContext();
         if (activity instanceof ConfigureActivity) {
-            active = true;
             context.getPackageManager().setComponentEnabledSetting(
                     new ComponentName(context, NotificationPublisher.class),
                     PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
@@ -90,7 +90,7 @@ public class NotificationPublisher extends BroadcastReceiver {
             polling = false;
         } else {
             Log.e(NotificationPublisher.class.getCanonicalName(),
-                    "unexpected startFiringNotifications from " +
+                    "unexpected resumeFiringNotifications from " +
                             activity.getClass().getCanonicalName());
         }
         NotificationPublisher.scheduleNotification(context, true);
@@ -107,7 +107,6 @@ public class NotificationPublisher extends BroadcastReceiver {
         if (justForPoll) {
             polling = true;
         } else {
-            active = false;
             Context context = activity.getApplicationContext();
             context.getPackageManager().setComponentEnabledSetting(
                     new ComponentName(context, NotificationPublisher.class),
@@ -124,7 +123,7 @@ public class NotificationPublisher extends BroadcastReceiver {
     }
 
     private static boolean scheduleNotification(Context context, boolean wakeup) {
-        if (polling || !active) {
+        if (isDisabled(context)) {
             return false;
         }
         PendingIntent pendingIntent =
@@ -152,7 +151,7 @@ public class NotificationPublisher extends BroadcastReceiver {
 
     public void onReceive(Context context, Intent intent) {
         synchronized (NotificationPublisher.class) {
-            if (polling || !active) {
+            if (isDisabled(context)) {
                 return;
             }
             if (intent.getAction().equals("android.intent.action.BOOT_COMPLETED")) {
